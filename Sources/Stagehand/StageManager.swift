@@ -36,6 +36,10 @@ enum StageManager {
         try? FileManager.default.attributesOfItem(atPath: snapshotURL.path)[.modificationDate] as? Date
     }
 
+    /// The error message from the most recent restore if it failed, or nil if it
+    /// succeeded. Shown in the menu, since automatic restores have no alert.
+    private(set) static var lastRestoreError: String?
+
     /// True if a snapshot exists to restore from.
     static var hasSnapshot: Bool {
         FileManager.default.fileExists(atPath: snapshotURL.path)
@@ -51,21 +55,36 @@ enum StageManager {
         )
 
         // Export the domain to the snapshot file
-        try run("/usr/bin/defaults", ["export", domain, snapshotURL.path])
+        do {
+            try run("/usr/bin/defaults", ["export", domain, snapshotURL.path])
+            Log.write("stages", "Saved stages to \(snapshotURL.path)")
+        } catch {
+            Log.write("stages", "Save failed: \(Log.describe(error))")
+            throw error
+        }
     }
 
     /// Imports the snapshot back into Stage Manager's preferences and restarts
     /// the WindowManager process so it picks them up. Throws if there's no
     /// snapshot or either command fails.
     static func restore() throws {
-        // Refuse to restore when nothing has been saved
-        guard hasSnapshot else { throw StageManagerError.noSnapshot }
+        do {
+            // Refuse to restore when nothing has been saved
+            guard hasSnapshot else { throw StageManagerError.noSnapshot }
 
-        // Write the snapshot back into the domain
-        try run("/usr/bin/defaults", ["import", domain, snapshotURL.path])
+            // Write the snapshot back into the domain
+            try run("/usr/bin/defaults", ["import", domain, snapshotURL.path])
 
-        // Restart WindowManager so it rereads the restored groupings
-        try run("/usr/bin/killall", ["WindowManager"])
+            // Restart WindowManager so it rereads the restored groupings
+            try run("/usr/bin/killall", ["WindowManager"])
+            lastRestoreError = nil
+            Log.write("stages", "Restored stages and restarted WindowManager")
+        } catch {
+            // Remember the failure for the menu and the log, then pass it on
+            lastRestoreError = error.localizedDescription
+            Log.write("stages", "Restore failed: \(Log.describe(error))")
+            throw error
+        }
     }
 
     /// Runs a command-line tool, waits for it to finish, and throws with its
@@ -91,7 +110,18 @@ enum StageManager {
 
     /// Returns the gray header lines for the Stage Manager part of the menu.
     static func statusLines() -> [(text: String, toolTip: String?)] {
-        guard let date = lastSaved else { return [("No Stages Saved", nil)] }
-        return [("Stages Last Saved", nil), (date.menuTimestamp, nil)]
+        // Show when the snapshot was saved, if there is one
+        var lines: [(text: String, toolTip: String?)]
+        if let date = lastSaved {
+            lines = [("Stages Last Saved", nil), (date.menuTimestamp, nil)]
+        } else {
+            lines = [("No Stages Saved", nil)]
+        }
+
+        // Flag a failed restore; hovering shows why
+        if let error = lastRestoreError {
+            lines.append(("Last Restore Failed", error))
+        }
+        return lines
     }
 }

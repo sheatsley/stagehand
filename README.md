@@ -3,9 +3,15 @@
 A small macOS menu bar app for people who use an iPad as a Sidecar display alongside Stage Manager. It:
 
 - **Reconnects Sidecar** when you log in or unlock your Mac, so you don't have to reconnect from Control Center every time.
-- **Saves and restores Stage Manager stages**, so you can get your window groupings back when macOS loses them.
+- **Saves and restores Stage Manager stages**, so you can get your window groupings back when macOS loses them. After you log in or unlock, Stagehand restores them automatically.
 
 Stagehand sits in the menu bar and uses a native macOS menu, much like Time Machine's.
+
+<p align="center">
+  <img src="docs/images/menu.png" alt="Stagehand's menu in the macOS menu bar" width="300">
+  &nbsp;&nbsp;
+  <img src="docs/images/about.png" alt="Stagehand's About window" width="240">
+</p>
 
 ## Requirements
 
@@ -32,15 +38,25 @@ Stagehand isn't notarized, so macOS blocks it the first time it opens. Allow it 
 
 | Menu item | What it does |
 | --- | --- |
-| Reconnect Sidecar | Connects to your iPad now. Also happens automatically at launch and after every unlock. |
-| Save Stages | Snapshots Stage Manager's current groupings. |
+| Reconnect Sidecar | Connects to your iPad now. |
+| Save Stages | Snapshots Stage Manager's current groupings. To change what gets restored, arrange your stages and save again. |
 | Restore Stages | Puts the saved snapshot back and restarts Stage Manager. Windows stay open, and the screen flickers briefly. |
 | Open at Login | Starts Stagehand when you log in. |
+
+Whenever you log in (with Open at Login on), unlock your Mac, or switch back to your account, Stagehand reconnects Sidecar and then restores your saved stages. Any stage changes you didn't save are replaced at that point.
 
 By default Stagehand connects to the first iPad it finds. To pick a specific one, use the name shown on the iPad under **Settings → General → About**:
 
 ```sh
 defaults write me.sheatsley.stagehand DeviceName "Ryan's iPad"
+```
+
+## Troubleshooting
+
+Stagehand logs what it does (unlocks, Sidecar attempts and their errors, stage saves and restores) to `~/Library/Logs/Stagehand/stagehand.log`. You can also find it in Console.app under **Log Reports**. When reporting a problem, include the end of the log:
+
+```sh
+tail -n 100 ~/Library/Logs/Stagehand/stagehand.log
 ```
 
 ## Build from source

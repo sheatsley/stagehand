@@ -6,6 +6,21 @@ All notable changes to Stagehand are documented here. The format follows
 
 ## [Unreleased]
 
+### Added
+
+- Restores saved stages automatically after Sidecar reconnects, at login, on unlock, and when switching back to your account.
+- The menu shows when the last stage restore failed; hover over it to see why.
+- Logging to `~/Library/Logs/Stagehand/stagehand.log`, capped at about 1 MB.
+- Screenshots in the README.
+
+### Fixed
+
+- Reconnect Sidecar no longer reports a failure when the iPad is already connected, on macOS versions where SidecarCore can report connected devices.
+
+### Changed
+
+- The About window now opens in front of other windows without Stage Manager moving them aside, and closes with ⌘W or Esc.
+
 ## [0.1.0] - 2026-11-13
 
 ### Added

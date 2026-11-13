@@ -21,6 +21,7 @@ cask "stagehand" do
 
   zap trash: [
     "~/Library/Application Support/Stagehand",
+    "~/Library/Logs/Stagehand",
     "~/Library/Preferences/me.sheatsley.stagehand.plist",
   ]
 

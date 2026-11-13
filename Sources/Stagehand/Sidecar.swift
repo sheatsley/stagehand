@@ -50,6 +50,14 @@ enum SidecarCore {
         device.perform(Selector(("name")))?.takeUnretainedValue() as? String ?? "iPad"
     }
 
+    /// Returns the names of the devices SidecarCore reports as already connected,
+    /// or nil if this macOS version's SidecarCore has no way to ask.
+    private static func connectedNames() -> [String]? {
+        guard let manager, manager.responds(to: Selector(("connectedDevices"))) else { return nil }
+        let connected = manager.perform(Selector(("connectedDevices")))?.takeUnretainedValue() as? [NSObject] ?? []
+        return connected.map(name(of:))
+    }
+
     /// Connects to an iPad over Sidecar. If `preferredName` is set, connects to
     /// the device with that name (case-insensitive). Otherwise connects to the
     /// first reachable device. Calls `completion` on the main thread with the
@@ -63,6 +71,7 @@ enum SidecarCore {
 
         // Choose the target device
         let reachable = devices()
+        Log.write("sidecar", "Reachable devices: \(reachable.map(name(of:)))")
         guard !reachable.isEmpty else {
             completion(.failure(SidecarError.noDevices))
             return
@@ -79,6 +88,14 @@ enum SidecarCore {
         }
         let targetName = name(of: target)
 
+        // Skip the request if macOS already has this iPad connected
+        let connected = connectedNames()
+        Log.write("sidecar", "Already connected: \(connected.map { "\($0)" } ?? "unknown (no connectedDevices in SidecarCore)")")
+        if let connected, connected.contains(where: { $0.caseInsensitiveCompare(targetName) == .orderedSame }) {
+            completion(.success(targetName))
+            return
+        }
+
         // Ask SidecarCore to connect; its callback can arrive on any thread, so hop back to main
         let callback: @convention(block) (NSError?) -> Void = { error in
             DispatchQueue.main.async {
@@ -89,6 +106,7 @@ enum SidecarCore {
                 }
             }
         }
+        Log.write("sidecar", "Requesting connection to “\(targetName)”")
         _ = manager.perform(Selector(("connectToDevice:completion:")), with: target, with: callback)
     }
 }
@@ -106,6 +124,9 @@ final class SidecarController {
 
     private var state: State = .idle
 
+    /// Called once when the running attempt finishes, whether it succeeded or failed.
+    private var onFinish: (() -> Void)?
+
     /// How many extra attempts to make after a failure, and how long to wait
     /// between them. Right after an unlock, the iPad often isn't discoverable yet.
     private let retries = 2
@@ -117,12 +138,15 @@ final class SidecarController {
         return false
     }
 
-    /// Starts a connection attempt after `delay` seconds. Ignores the request
-    /// if an attempt is already running.
-    func reconnect(after delay: TimeInterval = 0) {
+    /// Starts a connection attempt after `delay` seconds and calls `completion`
+    /// when it finishes (after any retries), whether or not it succeeded.
+    /// Ignores the request, and never calls `completion`, if an attempt is
+    /// already running, so overlapping triggers don't stack up follow-up work.
+    func reconnect(after delay: TimeInterval = 0, completion: (() -> Void)? = nil) {
         // Skip if an attempt is already in progress
         guard !isConnecting else { return }
         state = .connecting
+        onFinish = completion
 
         // Start the first attempt after the delay
         DispatchQueue.main.asyncAfter(deadline: .now() + delay) {
@@ -135,21 +159,32 @@ final class SidecarController {
     private func attempt(retriesLeft: Int) {
         // Use the iPad name from preferences if set; otherwise take the first reachable iPad
         let preferred = UserDefaults.standard.string(forKey: "DeviceName")
+        Log.write("sidecar", "Attempt \(retries - retriesLeft + 1) of \(retries + 1) (preferred device: \(preferred ?? "none"))")
 
         SidecarCore.connect(preferredName: preferred) { result in
             switch result {
             case .success(let name):
+                Log.write("sidecar", "Connected to “\(name)”")
                 self.state = .connected(name: name, at: Date())
+                self.finish()
             case .failure(let error) where retriesLeft > 0:
-                NSLog("Stagehand: Sidecar attempt failed, retrying: \(error.localizedDescription)")
+                Log.write("sidecar", "Attempt failed, retrying in \(Int(self.retryDelay))s: \(Log.describe(error))")
                 DispatchQueue.main.asyncAfter(deadline: .now() + self.retryDelay) {
                     self.attempt(retriesLeft: retriesLeft - 1)
                 }
             case .failure(let error):
-                NSLog("Stagehand: Sidecar connection failed: \(error.localizedDescription)")
+                Log.write("sidecar", "Giving up: \(Log.describe(error))")
                 self.state = .failed(message: error.localizedDescription, at: Date())
+                self.finish()
             }
         }
+    }
+
+    /// Runs the completion handler for the attempt that just finished, once.
+    private func finish() {
+        let completion = onFinish
+        onFinish = nil
+        completion?()
     }
 
     /// Returns the gray header lines for the menu (text plus an optional tooltip),
