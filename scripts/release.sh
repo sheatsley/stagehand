@@ -1,7 +1,7 @@
 #!/usr/bin/env bash
 # Cuts a Stagehand release from your Mac, doing locally what a CI release job
 # would do: checks the repo is clean and in sync with GitHub, builds the app,
-# zips it, tags the commit, publishes a GitHub release with the zip attached
+# zips it, makes a signed tag, publishes a GitHub release with the zip attached
 # and the matching CHANGELOG.md section as notes, then updates the Homebrew tap.
 # Usage: scripts/release.sh X.Y.Z   (or: make release VERSION=X.Y.Z)
 set -euo pipefail
@@ -47,8 +47,9 @@ rm -f "$ZIP"
 ditto -c -k --keepParent "build/$NAME.app" "$ZIP"
 ZIP_SHA="$(shasum -a 256 "$ZIP" | awk '{print $1}')"
 
-# Tag the commit and push the tag (only after the build succeeded)
-git tag -a "$TAG" -m "$NAME $VERSION"
+# Tag the commit with a signed tag, confirm the signature, and push it (only after the build succeeded)
+git tag --sign "$TAG" -m "$NAME $VERSION"
+git tag --verify "$TAG" >/dev/null 2>&1 || { git tag --delete "$TAG" >/dev/null; die "the signature on tag $TAG did not verify; tag removed, nothing pushed"; }
 git push --quiet origin "$TAG"
 
 # Publish the GitHub release with the zip attached
