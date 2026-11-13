@@ -17,11 +17,12 @@ Stagehand sits in the menu bar and uses a native macOS menu, much like Time Mach
 With [Homebrew](https://brew.sh):
 
 ```sh
-brew tap sheatsley/tap
-brew install --cask stagehand      # prebuilt app from GitHub Releases
+brew install --cask sheatsley/tap/stagehand   # prebuilt app from GitHub Releases
 # or
-brew install stagehand             # builds from source
+brew install sheatsley/tap/stagehand          # builds from source
 ```
+
+Using the full name taps `sheatsley/tap` and trusts just this package, which Homebrew 6 and later require for packages outside Homebrew's own repositories.
 
 Or download `Stagehand-X.Y.Z.zip` from [Releases](https://github.com/sheatsley/stagehand/releases) and move `Stagehand.app` to `/Applications`.
 
@@ -63,7 +64,7 @@ Releases are built and published from a Mac. No CI is involved.
 
 The release script checks that the repo is clean and in sync with GitHub. It then builds and zips the app, makes a signed tag for the commit, and publishes a GitHub release with the zip attached and the changelog section as notes. Finally, it updates the cask and formula in the [sheatsley/tap](https://github.com/sheatsley/homebrew-tap) tap. It runs the tap's checks (`brew style`, `brew audit --strict --online`, `brew livecheck`), then commits with a signature and pushes. If a check fails, the release stays published but the tap is left unchanged. Fix `packaging/homebrew/` and run `scripts/update-tap.sh X.Y.Z <zip sha256>` again.
 
-One-time setup: install the [GitHub CLI](https://cli.github.com) and sign in (`brew install gh`, `gh auth login`, `gh auth setup-git`), then `brew tap sheatsley/tap`. Git must be able to sign commits and tags with your key (YubiKey inserted).
+One-time setup: install the [GitHub CLI](https://cli.github.com) and sign in (`brew install gh`, `gh auth login`, `gh auth setup-git`), then `brew tap sheatsley/tap` and `brew trust sheatsley/tap`. Git must be able to sign commits and tags with your key (YubiKey inserted).
 
 ## How it works
 

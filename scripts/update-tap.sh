@@ -45,7 +45,7 @@ sed -e "s/__VERSION__/$VERSION/g" -e "s/__SRC_SHA256__/$SRC_SHA/g" \
 if ! "$TAP_DIR/scripts/check.sh"; then
     git -C "$TAP_DIR" checkout --quiet -- Casks Formula
     git -C "$TAP_DIR" clean --quiet -fd -- Casks Formula
-    die "the tap's checks failed; the tap was left unchanged (fix packaging/homebrew/, then: scripts/update-tap.sh $VERSION $ZIP_SHA)"
+    die "the tap's checks failed (see above); the tap was left unchanged. Fix the cause, then run: scripts/update-tap.sh $VERSION $ZIP_SHA"
 fi
 
 # Commit (signed, using Homebrew's commit message convention), confirm the signature, and push
