@@ -1,0 +1,24 @@
+{
+    "configurations": [
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:stagehand}",
+            "name": "Debug Stagehand",
+            "target": "Stagehand",
+            "configuration": "debug",
+            "preLaunchTask": "swift: Build Debug Stagehand"
+        },
+        {
+            "type": "swift",
+            "request": "launch",
+            "args": [],
+            "cwd": "${workspaceFolder:stagehand}",
+            "name": "Release Stagehand",
+            "target": "Stagehand",
+            "configuration": "release",
+            "preLaunchTask": "swift: Build Release Stagehand"
+        }
+    ]
+}
